@@ -1,0 +1,121 @@
+# This is an sample property file for the mysql-fixer buildscript it contains 
+# all available properties. You may also use the these properties as commandline
+# parameters for Phing 
+
+#---------------------#
+# GENERAL INFORMATION #
+#---------------------#
+
+# == MySQL database administrator credentials == 
+# Used by all targets for logging into your MySQL database server so the script
+# is able to: 
+#
+# - create and destroy databases
+# - create and remove users
+# - grant rights on new databases
+#
+# NB: This implies that the credentials supplied must have the ability to 
+# perform above mentioned actions!
+mysql.admin_username=root
+mysql.admin_pwd=password
+mysql.admin_host=localhost
+
+# == MySQL database information ==
+# Used by all targets so the script knows which database to: 
+# 
+# - setup
+# - backup
+# - restore
+# - teardown
+#
+# NB: Usually the mysql.database_host is the same as the mysql.admin_host 
+mysql.database_name=new_database
+mysql.database_host=${mysql.admin_host}
+
+
+#-------------------------------------#
+# SETUP/TEARDOWN SPECIFIC INFORMATION #
+#-------------------------------------#
+
+# == MySQL add user information ==
+# Only used by target 'mysql-setup-database' to either create a new user, grant 
+# rights to an existing user on the newly setup database or do nothing
+# 
+# mysql.add_user has three possible values: 
+# 
+# - new       => add a new user to the database 
+# - existing  => grant an existing MySQL user rights to the database
+# - none      => do nothing with regards to granting user rights to the database
+# 
+# NB: Depending on the chosen value for mysql.add_user the value of the property
+# mysql.database_user_name is either a new username or the existing user's name
+# By default a user will be granted * ALL * rights on the specified database
+mysql.add_user=new
+
+# == MySQL remove user information ==
+# Only used by target 'mysql-teardown-database' to either create a new user, grant 
+# rights to an existing user on the newly setup database or do nothing
+# 
+# mysql.remove_user has three possible values: 
+# 
+# - remove    => remove the user completely from the database 
+# - revoke    => revoke the user's rights on the specified database
+# - none      => do nothing with regards to the user
+# 
+# NB: The chosen value for mysql.remove_user affects the given user set in the 
+# mysql.database_user_name property 
+mysql.remove_user=remove
+
+# == MySQL database user credentials ==
+# Used by both the 'mysql-setup-database' as well as the 'mysql-setup-database'
+# targets
+# 
+# mysql.database_user_name
+# ------------------------
+# Depending on the target the value of mysql.database_user_name property is 
+# used to either create a new user with this name or denote an existing user 
+# who will be granted his/her rights, revoked his/her rights on the specified 
+# database or be completely removed    
+#
+# mysql.database_user_password
+# ----------------------------
+# Is only used in the creation of a new user
+mysql.database_user_name=a_user_name
+mysql.database_user_password=a_user_password
+
+
+#-------------------------------------#
+# BACKUP/RESTORE SPECIFIC INFORMATION #
+#-------------------------------------#
+
+# == MySQL backup information ==
+# Only used by target 'mysql-backup-database' to backup a database backup
+# 
+# mysql.backup_path
+# -----------------
+# Full path (without trailing slash) where the backup file will be written.
+# By default a backup file is named after the databasename with the sql 
+# extension. For example: database_name.sql 
+#
+# mysql.compress_backup
+# -----------------
+# Use the value yes, if the backup file should be compressed. Or no when it
+# shouldn't be compressed. By default the compressed archive used is tar.gz
+# and the compressed file will be named: database_name.tar.gz
+mysql.backup_path=.
+mysql.compress_backup=yes
+
+# == MySQL restore information ==
+# Only used by target 'mysql-restore-database' to backup a database backup
+# 
+# mysql.restore_file_path
+# -----------------
+# Full path towards the backup's (uncompressed! sql) file  
+# For example: /tmp/database_name.sql 
+#
+# mysql.compress_backup
+# -----------------
+# Use the value yes, if the backup file should be removed. Or no when it
+# shouldn't be removed.
+mysql.restore_file_path=${mysql.backup_path}/${mysql.database_name}.sql
+mysql.remove_backup_file=no

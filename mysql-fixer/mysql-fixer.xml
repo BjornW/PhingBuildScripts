@@ -1,0 +1,430 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="MySQL Fixer" description="Build script for creating, removing and backing up MySQL databases. Includes adding, removing users and setting user rights" default="mysql-menu" phingVersion="2.4.9" basedir=".">
+  
+  <!-- ====================================================================== -->
+  <!--  MENU TARGETS                                                          -->
+  <!-- ====================================================================== -->
+
+  <!-- Display a menu with several common MySQL chores --> 
+  <target name="mysql-menu" description="Displays a menu with several MySQL chores to perform">
+    <input propertyname="mysql.menu_choice" validargs="1,2,3,4">
+      ********************************************************************************
+     
+      MySQL Fixer 
+      Enter the number of the action to perform (or Control-C to quit)
+          
+            1) Setup a database
+            2) Backup a database
+            3) Restore a backup
+            4) Tear down a database (Will completely destroy the specified database!)
+              
+      ********************************************************************************
+    </input>
+
+    <!-- Depending on the selection call the main task -->
+    <if>
+      <equals arg1="${mysql.menu_choice}" arg2="1" />
+      <then>
+        <phingcall target="mysql-setup-database" />  
+      </then>
+    
+      <elseif>
+        <equals arg1="${mysql.menu_choice}" arg2="2" />
+        <then>
+          <phingcall target="mysql-backup-database" />  
+        </then>
+      </elseif>
+      
+      <elseif>
+        <equals arg1="${mysql.menu_choice}" arg2="3" />
+        <then>
+          <phingcall target="mysql-restore-database" />  
+        </then>
+      </elseif>
+      
+      <elseif>
+        <equals arg1="${mysql.menu_choice}" arg2="4" />
+        <then>
+          <phingcall target="mysql-teardown-database" />  
+        </then>
+      </elseif>
+    </if>
+  </target>
+
+  <!-- Setup a database. Will ask for parameters if no propertyfile with the necessary properties was supplied . -->
+  <target name="mysql-setup-database" depends="mysql-request-parameters, mysql-request-parameters-setup" description="Setup a database. Will ask for parameters if no propertyfile with the necessary properties was supplied">
+  </target>
+
+  <!-- Backup a database. Will ask for parameters if no propertyfile with the necessary properties was supplied . -->
+  <target name="mysql-backup-database" description="Backup a database. Will ask for parameters if no propertyfile with the necessary properties was supplied" depends="mysql-request-parameters, mysql-request-parameters-backup">
+  </target>  
+ 
+  <!-- Restore a database. Will ask for parameters if no propertyfile with the necessary properties was supplied . -->
+  <target name="mysql-restore-database" description="Restore a database. Will ask for parameters if no propertyfile with the necessary properties was supplied" depends="mysql-request-parameters, mysql-request-parameters-restore">
+  </target>  
+  
+  <!-- Teardown a database. Will ask for parameters if no propertyfile with the necessary properties was supplied . -->
+  <target name="mysql-teardown-database" description="Teardown a database. Will ask for parameters if no propertyfile with the necessary properties was supplied" depends="mysql-request-parameters, mysql-request-parameters-teardown">
+  </target>  
+
+
+
+  <!-- ====================================================================== -->
+  <!--  REQUEST PARAMETERS                                                    -->
+  <!-- ====================================================================== -->
+
+  <!-- Request overall parameters (database administrator credentials, hostname and database name) for performing the chores -->
+  <!-- when using a propertyfile no questions will be asked! -->
+  <target name="mysql-request-parameters" description="Request parameters (database administrator credentials, hostname and database name) if no properties were set">
+    <if>
+      <not><isset property="mysql.admin_username" /></not>
+      <then>
+        <input propertyName="mysql.admin_username" defaultValue="root">
+          Enter the MySQL administrator username:
+        </input>
+      </then>
+      <else><echo msg="Using properties file value for mysql.admin_name" /></else>
+    </if>
+    <if>
+      <not><isset property="mysql.admin_pwd" /></not>
+      <then>
+        <input propertyName="mysql.admin_pwd" defaultValue="">
+          Enter the MySQL administrator password:
+        </input>
+      </then>
+      <else><echo msg="Using properties file value for mysql.admin_pwd" /></else>
+    </if>
+    <if>
+      <not><isset property="mysql.admin_host" /></not>
+      <then>
+        <input propertyName="mysql.admin_host" defaultValue="localhost">
+          Enter the MySQL host:
+        </input>
+      </then>
+      <else><echo msg="Using properties file value for mysql.admin_host" /></else>
+    </if>
+    <if>
+      <not><isset property="mysql.database_name" /></not>
+      <then>
+        <input propertyName="mysql.database_name" defaultValue="">
+          Enter a name for the database (use only letters, numbers and underscores):
+        </input>
+      </then>
+      <else><echo msg="Using properties file value for mysql.database_name" /></else>
+    </if>
+  </target>
+
+  <!-- Request parameters specifically for setup -->
+  <target name="mysql-request-parameters-setup" description="Request parameters specifically for adding a user and granting rights on a database">
+    <if>
+      <not><isset property="mysql.add_user" /></not>
+      <then>
+        <input propertyName="mysql.add_user" defaultValue="new" validargs="new, existing, none">
+          - Enter 'new' for adding a new user
+          - Enter 'existing' for granting rights to an existing user
+          - Enter 'none' for doing nothing with users at all 
+        </input>
+      </then>
+      <else><echo msg="Using properties file value for mysql.add_user" /></else>
+    </if>
+    <if>
+      <equals arg1="${mysql.add_user}" arg2="new" />
+      <then>
+        <if>
+          <not><isset property="mysql.database_user_name" /></not>
+          <then>
+            <input propertyName="mysql.database_user_name" defaultValue="${mysql.database_name}">
+              Enter a user name (use only letters and numbers in the name):
+            </input>
+          </then>
+          <else><echo msg="Using properties file value for mysql.database_user_name" /></else>
+        </if>
+        <if>
+          <not><isset property="mysql.database_user_password" /></not>
+          <then>
+            <input propertyName="mysql.database_user_password" defaultValue="">
+              Enter a user password:
+            </input>
+          </then>
+          <else><echo msg="Using properties file value for mysql.database_user_password" /></else>
+        </if>
+        <if>
+          <not><isset property="mysql.database_host" /></not>
+          <then>
+            <input propertyName="mysql.database_host" defaultValue="${mysql.admin_host}">
+              Enter a hostname (only change if you need remote access to the database):
+            </input>
+          </then>
+          <else><echo msg="Using properties file value for mysql.database_host" /></else>
+        </if>
+        <phingcall target="mysql-create-database" />  
+        <phingcall target="mysql-add-database-user" />  
+        <phingcall target="mysql-grant-database-user-rights" />  
+      </then>
+      <elseif>
+        <equals arg1="${mysql.add_user}" arg2="none" />
+        <then>
+          <phingcall target="mysql-create-database" />  
+        </then>
+      </elseif>
+      <elseif>
+        <equals arg1="${mysql.add_user}" arg2="existing" />
+        <then>
+          <if>
+            <not><isset property="mysql.database_user_name" /></not>
+            <then>
+              <input propertyName="mysql.database_user_name" defaultValue="${mysql.database_name}">
+                Enter the existing user name:
+              </input>
+            </then>
+            <else><echo msg="Using properties file value for mysql.database_user_name" /></else>
+          </if>
+          
+          <if>
+            <not><isset property="mysql.database_host" /></not>
+            <then>
+              <input propertyName="mysql.database_host" defaultValue="${mysql.admin_host}">
+                Enter a hostname (only change if you need remote access to the database):</input>
+            </then>
+            <else><echo msg="Using properties file value for mysql.database_host" /></else>
+          </if>
+          <phingcall target="mysql-create-database" />  
+          <phingcall target="mysql-grant-database-user-rights" />  
+        </then>  
+      </elseif>  
+    </if>
+  </target>
+
+  <!-- Request parameters specifically for making a database backup -->
+  <target name="mysql-request-parameters-backup" description="Request parameters specifically for making a database backup">
+    <if>
+      <not><isset property="mysql.backup_path" /></not>
+      <then>
+        <input propertyName="mysql.backup_path" defaultValue="/tmp" >
+          Enter the full path e.g. /tmp :   
+        </input>
+      </then>
+      <else><echo msg="Using properties file value for mysql.backup_path" /></else>
+    </if>
+
+    <if>
+      <not><isset property="mysql.compress_backup" /></not>
+      <then>
+        <input propertyName="mysql.compress_backup" defaultValue="yes" validargs="yes,no" >
+          Enter yes if you want to compress the backup or no if you don't want to compress it:   
+        </input>
+      </then>
+      <else><echo msg="Using properties file value for mysql.compress_backup" /></else>
+    </if>
+    <phingcall target="mysql-make-backup" />
+    <if>
+      <equals arg1="${mysql.compress_backup}" arg2="yes" />
+      <then>
+        <phingcall target="mysql-compress-backup" />
+      </then>
+    </if>    
+  </target>
+
+  <!-- Request parameters specifically for restoring a database backup -->
+  <target name="mysql-request-parameters-restore" description="Request parameters specifically for restoring a database backup">
+    <if>
+      <not><isset property="mysql.restore_file_path" /></not>
+      <then>
+        <input propertyName="mysql.restore_file_path" defaultValue="${mysql.backup_path}/${mysql.database_name}.sql" >
+          Enter the full path including filename of the backup sql file to restore e.g. /tmp/database_name.sql:   
+        </input>
+      </then>
+      <else><echo msg="Using properties file value for mysql.restore_file_path" /></else>
+    </if>
+
+    <if>
+      <not><isset property="mysql.remove_backup_file" /></not>
+      <then>
+        <input propertyName="mysql.remove_backup_file" defaultValue="no" validargs="yes,no" >
+          Enter yes if you want to remove the backup file or no if you want to keep it:   
+        </input>
+      </then>
+      <else><echo msg="Using properties file value for mysql.remove_backup_file" /></else>
+    </if>
+    <phingcall target="mysql-restore-backup" />
+    <if>
+      <equals arg1="${mysql.remove_backup_file}" arg2="yes" />
+      <then>
+        <phingcall target="mysql-remove-backup-file" />
+      </then>
+    </if>    
+  </target>
+
+
+  <!-- Request parameters specifically for teardown -->
+  <target name="mysql-request-parameters-teardown" description="Request parameters specifically for removing a user and revoking rights on a database">
+    <if>
+      <not><isset property="mysql.remove_user" /></not>
+      <then>
+        <input propertyName="mysql.remove_user" defaultValue="remove" validargs="remove, revoke, none">
+          - Enter 'remove' for removing an existing user
+          - Enter 'revoke' for revoking * all * rights from an existing user on the specified database
+          - Enter 'none' for doing nothing with users at all 
+        </input>
+      </then>
+      <else><echo msg="Using properties file value for mysql.remove_user" /></else>
+    </if>
+    <if>
+      <equals arg1="${mysql.remove_user}" arg2="remove" />
+      <then> 
+        <if>
+          <not><isset property="mysql.database_user_name" /></not>
+          <then>
+            <input propertyName="mysql.database_user_name" defaultValue="${mysql.database_name}">
+              Enter a user name to ${mysql.remove_user}:
+            </input>
+          </then>
+          <else><echo msg="Using properties file value for mysql.database_user_name" /></else>
+        </if>
+        <if>
+          <not><isset property="mysql.database_host" /></not>
+          <then>
+            <input propertyName="mysql.database_host" defaultValue="${mysql.admin_host}">
+              Enter a hostname (only change if you want to revoke rights from remote access):
+            </input>
+          </then>
+          <else><echo msg="Using properties file value for mysql.database_host" /></else>
+        </if>
+        <phingcall target="mysql-revoke-database-user-rights" />  
+        <phingcall target="mysql-remove-user" />  
+        <phingcall target="mysql-remove-database" />  
+      </then>
+      
+      <elseif>
+        <equals arg1="${mysql.remove_user}" arg2="revoke" />
+        <then>
+          <if>
+            <not><isset property="mysql.database_user_name" /></not>
+            <then>
+              <input propertyName="mysql.database_user_name" defaultValue="${mysql.database_name}">
+                Enter a user name to ${mysql.remove_user}:
+              </input>
+            </then>
+            <else><echo msg="Using properties file value for mysql.database_user_name" /></else>
+          </if>
+          <if>
+            <not><isset property="mysql.database_host" /></not>
+            <then>
+              <input propertyName="mysql.database_host" defaultValue="${mysql.admin_host}">
+                Enter a hostname (only change if you want to revoke rights from remote access):
+              </input>
+            </then>
+            <else><echo msg="Using properties file value for mysql.database_host" /></else>
+          </if>
+          <phingcall target="mysql-revoke-database-user-rights" />  
+          <phingcall target="mysql-remove-database" />  
+        </then>
+      </elseif>  
+      
+      <elseif>
+        <equals arg1="${mysql.remove_user}" arg2="none" />
+        <then> 
+          <phingcall target="mysql-remove-database" />  
+        </then>
+      </elseif>  
+    </if>  
+  </target>
+
+  <!-- ====================================================================== -->
+  <!--  SETUP TARGETS                                                         -->
+  <!-- ====================================================================== -->
+  
+  <!-- Create database with the supplied parameters --> 
+  <target name="mysql-create-database">
+    <echo message="mysqladmin --user=${mysql.admin_username} --password=${mysql.admin_pwd} --host=${mysql.admin_host} create ${mysql.database_name}" /> 
+    <exec checkreturn="true" command="mysqladmin --user=${mysql.admin_username} --password=${mysql.admin_pwd} --host=${mysql.admin_host} create ${mysql.database_name}" /> 
+  </target>
+
+  <!-- Add a new MySQL database user -->
+  <target name="mysql-add-database-user">
+    <property name="mysql.sql_add_user" value="CREATE USER '${mysql.database_user_name}'@'${mysql.database_host}' IDENTIFIED BY '${mysql.database_user_password}'" />
+    <echo msg='echo "${mysql.sql_add_user}" | mysql --user=${mysql.admin_username} --password=${mysql.admin_pwd} --host=${mysql.admin_host} --database=mysql' /> 
+    <exec checkreturn="true" command='echo "${mysql.sql_add_user}" | mysql --user=${mysql.admin_username} --password=${mysql.admin_pwd} --host=${mysql.admin_host} --database=mysql' /> 
+  </target>
+
+  <!-- Grant rights on the newly created database to the newly created user or an existing user -->
+  <target name="mysql-grant-database-user-rights">
+    <if>
+      <or><equals arg1="${mysql.add_user}" arg2="new" /><equals arg1="${mysql.add_user}" arg2="existing" /></or>
+      <then>
+        <property name="mysql.sql_grant_all" value="GRANT ALL ON ${mysql.database_name}.* TO '${mysql.database_user_name}'@'${mysql.database_host}'" />
+        <exec checkreturn="true" command='echo "${mysql.sql_grant_all}" | mysql --user=${mysql.admin_username} --password=${mysql.admin_pwd} --host=${mysql.admin_host} --database=mysql' /> 
+      </then>
+    </if>  
+  </target>
+
+
+  <!-- ====================================================================== -->
+  <!--  TEARDOWN TARGETS                                                      -->
+  <!-- ====================================================================== -->
+
+  <!-- Removes all privileges from a supplied user from the supplied database -->
+  <target name="mysql-revoke-database-user-rights" description="Removes all privileges from a supplied user from the supplied database">
+    <if>
+      <or><equals arg1="${mysql.add_user}" arg2="new" /><equals arg1="${mysql.add_user}" arg2="existing" /></or>
+      <then>
+        <property name="mysql.sql_revoke_all" value="REVOKE ALL PRIVILEGES ON ${mysql.database_name}.* FROM '${mysql.database_user_name}'@'${mysql.database_host}'" />
+        <exec checkreturn="true" command='echo "${mysql.sql_revoke_all}" | mysql --user=${mysql.admin_username} --password=${mysql.admin_pwd} --host=${mysql.admin_host} --database=mysql' /> 
+      </then>
+    </if>  
+  </target>
+
+  <!-- Remove a MySQL user completely -->
+  <target name="mysql-remove-user" description="Remove a MySQL user completely">
+    <property name="mysql.sql_drop_user" value="DROP USER '${mysql.database_user_name}'@'${mysql.database_host}'" />
+    <echo msg='echo "${mysql.sql_drop_user}" | mysql --user=${mysql.admin_username} --password=${mysql.admin_pwd} --host=${mysql.admin_host} --database=${mysql.database_name}' /> 
+    <exec checkreturn="true" command='echo "${mysql.sql_drop_user}" | mysql --user=${mysql.admin_username} --password=${mysql.admin_pwd} --host=${mysql.admin_host} --database=${mysql.database_name}' /> 
+  </target> 
+
+  <!-- Remove all tables and data from an existing database, but leaves the database intact -->
+  <!-- Thanks http://edwardawebb.com/linux/drop-tables-mysql-database-deletion -->
+  <target name="mysql-remove-all-tables" description="Remove all tables and data from an existing database, but leaves the database intact">
+    <exec command="mysqldump --user=${mysql.admin_username} --password=${mysql.admin_pwd} --host=${mysql.admin_host} --no-data --add-drop-table ${mysql.database_name} | grep ^DROP | mysql --user=${mysql.admin_username} --password=${mysql.admin_pwd} --host=${mysql.admin_host} ${mysql.database_name}" /> 
+  </target>
+
+  <!-- Remove a database completely. This will destroy it completely! -->
+  <target name="mysql-remove-database" description="Remove a database completely. This will destroy it completely!">
+    <property name="mysql.sql_drop_database" value="DROP DATABASE IF EXISTS ${mysql.database_name}" />
+    <echo msg='echo "${mysql.sql_drop_database}" | mysql --user=${mysql.admin_username} --password=${mysql.admin_pwd} --host=${mysql.admin_host} --database=${mysql.database_name}' /> 
+    <exec checkreturn="true" command='echo "${mysql.sql_drop_database}" | mysql --user=${mysql.admin_username} --password=${mysql.admin_pwd} --host=${mysql.admin_host} --database=${mysql.database_name}' /> 
+  </target>
+
+  <!-- ====================================================================== -->
+  <!--   BACKUP TARGETS                                                       -->
+  <!-- ====================================================================== -->
+
+  <!-- Backup a database to the supplied location -->
+  <target name="mysql-make-backup" description="Backup a database to the supplied location">
+    <exec checkreturn="true" command="mysqldump --user=${mysql.admin_username} --password=${mysql.admin_pwd} --host=${mysql.admin_host} ${mysql.database_name} &gt; ${mysql.backup_path}/${mysql.database_name}.sql" /> 
+  </target>
+
+  <!-- Compress backup file -->
+  <target name="mysql-compress-backup" description="Compress backup file">
+    <tar destfile="${mysql.backup_path}/${mysql.database_name}.tar.gz" compression="gzip">
+      <fileset dir="${mysql.backup_path}">
+	      <include name="*.sql" />
+      </fileset>
+    </tar>
+  </target>
+
+
+  <!-- ====================================================================== -->
+  <!--   RESTORE TARGETS                                                      -->
+  <!-- ====================================================================== -->
+
+  <!-- Restore a database from the supplied location to the given database -->
+  <target name="mysql-restore-backup" description="Restore a database from the supplied location to the given database">
+    <exec checkreturn="true" command="mysqldump --user=${mysql.admin_username} --password=${mysql.admin_pwd} --host=${mysql.admin_host} ${mysql.database_name} &lt; ${mysql.restore_file_path}" /> 
+  </target>
+
+  <!-- Remove a file from the supplied location -->
+  <target name="mysql-remove-backup-file" description="Remove a file from the supplied location">
+    <delete file="${mysql.restore_file_path}" /> 
+  </target>
+
+</project>
