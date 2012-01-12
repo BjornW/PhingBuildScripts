@@ -75,7 +75,8 @@ mysql.remove_user=remove
 # Depending on the target the value of mysql.database_user_name property is 
 # used to either create a new user with this name or denote an existing user 
 # who will be granted his/her rights, revoked his/her rights on the specified 
-# database or be completely removed    
+# database or be completely removed. Keep in mind that a username should be less 
+# than 16 characters!    
 #
 # mysql.database_user_password
 # ----------------------------
