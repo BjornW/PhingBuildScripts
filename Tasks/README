@@ -1,0 +1,3 @@
+In this directory you will find custom tasks which you can use in Phing with 
+the taskdef task (http://www.phing.info/docs/guide/stable/chapters/appendixes/AppendixB-CoreTasks.html#TaskdefTask). 
+Have a look at the included Test*.xml files for more info 
