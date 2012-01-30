@@ -1,0 +1,10 @@
+<?xml version="1.0" ?>
+
+<project name="test-random-string-task" basedir="." default="test.randomstring">
+  <taskdef name="randomstring" classname="RandomStringTask" />
+
+    <target name="test.randomstring">
+      <randomstring length="2" propertyName="test.rndstr" ascii_start="48" ascii_stop="57" exclude="33" />
+      <echo message="The Random String: ${test.rndstr}" />
+    </target>
+</project>
