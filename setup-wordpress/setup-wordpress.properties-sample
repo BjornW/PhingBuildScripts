@@ -1,0 +1,19 @@
+wordpress.install_version=trunk
+wordpress.install_path=/tmp/
+wordpress.database_name=wordpress
+wordpress.database_user=wordpress
+wordpress.database_password=wordpress
+wordpress.database_host=localhost
+wordpress.config_language=English
+wordpress.config_debug=no
+wordpress.config_is_multisite=no
+wordpress.subversion_action=export
+
+# finish install 
+wordpress.tmp_path=/tmp
+wordpress.site_url=http://domain.ext
+wordpress.site_title=My new WordPress site
+wordpress.admin_user=admin
+wordpress.admin_password=admin
+wordpress.admin_email=root@localhost
+wordpress.is_public=1

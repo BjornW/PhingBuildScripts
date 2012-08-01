@@ -1,0 +1,286 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- TODO: Multisite in config file (checken hoe wordpress dit wil), blogs.dir aanmaken bij multisite, lokale wordpress zip gebruiken -->
+
+<project name="WordPress Fixer" description="Build script for setting up or tearing down a WordPress installation" default="wordpress-setup" phingVersion="2.4.9" basedir=".">
+
+  <!-- Include custom task RandomStringTask; used for the cookies keys and salts in wp-config -->
+  <taskdef name="randomstring" classname="Tasks.RandomStringTask" />
+
+  <!-- Globals, but only for this build script so still using wordpress as namespace -->
+  <property name="wordpress.subversion_executable_path" value="/usr/bin/svn" override='true' />
+  <property name="wordpress.subversion_url" value="http://core.svn.wordpress.org" override='true' />
+  <echo msg="${phing.home}" />
+
+  <!-- Install WordPress -->
+  <target name="wordpress-setup" depends="wordpress-request-parameters, wordpress-retrieval, wordpress-setup-wp-config-file, wordpress-finish-install">
+  </target>
+
+
+  <!-- Request parameters for installing WordPress -->
+  <target name="wordpress-request-parameters" description="Request parameters needed for the WordPress installation">
+
+    <if>
+      <not><isset property="wordpress.install_version" /></not>
+      <then>
+        <input propertyName="wordpress.install_version" defaultValue="trunk">
+          Enter the WordPress version (version number or trunk) to install:
+        </input>
+      </then>
+      <else><echo msg="Using properties file value for wordpress.install_version" /></else>
+    </if>
+
+    <if>
+      <not><isset property="wordpress.install_path" /></not>
+      <then>
+        <input propertyName="wordpress.install_path" defaultValue=".">
+          Enter your WordPress' installation (full!) path:
+        </input>
+      </then>
+      <else><echo msg="Using properties file value for wordpress.install_path" /></else>
+    </if>
+
+    <if>
+      <not><isset property="wordpress.database_name" /></not>
+      <then>
+        <input propertyName="wordpress.database_name" defaultValue="">
+          Enter your WordPress' database name:
+        </input>
+      </then>
+      <else><echo msg="Using properties file value for wordpress.database_name" /></else>
+    </if>
+
+    <if>
+      <not><isset property="wordpress.database_user" /></not>
+      <then>
+        <input propertyName="wordpress.database_user" defaultValue="">
+          Enter your WordPress' database username:
+        </input>
+      </then>
+      <else><echo msg="Using properties file value for wordpress.database_user" /></else>
+    </if>
+
+    <if>
+      <not><isset property="wordpress.database_password" /></not>
+      <then>
+        <input propertyName="wordpress.database_password" defaultValue="">
+          Enter your WordPress' database password:
+        </input>
+      </then>
+      <else><echo msg="Using properties file value for wordpress.database_password" /></else>
+    </if>
+
+    <if>
+      <not><isset property="wordpress.database_host" /></not>
+      <then>
+        <input propertyName="wordpress.database_host" defaultValue="localhost">
+          Enter your WordPress' host (usually the default or 127.0.0.1):
+        </input>
+      </then>
+      <else><echo msg="Using properties file value for wordpress.database_host" /></else>
+    </if>
+
+    <if>
+      <not><isset property="wordpress.config_language" /></not>
+      <then>
+        <input propertyName="wordpress.config_language" defaultValue="English">
+          Enter a language code if you want to use a different language than English (e.g. nl_NL or fr_BE)
+        </input>
+      </then>
+      <else><echo msg="Using properties file value for wordpress.config_language" /></else>
+    </if>
+
+    <if>
+      <not><isset property="wordpress.config_debug" /></not>
+      <then>
+        <input propertyName="wordpress.config_debug" defaultValue="no" validArgs="no,yes">
+          Enter yes if you would like to enable WordPress debugging and logging (use only for development!):
+         </input>
+      </then>
+      <else><echo msg="Using properties file value for wordpress.config_debug" /></else>
+    </if>
+
+    <if>
+      <not><isset property="wordpress.config_is_multisite" /></not>
+      <then>
+        <input propertyName="wordpress.config_is_multisite" defaultValue="no" validArgs="no, yes">
+          Enter yes if you would like to enable WordPress MultiSite or else enter no:
+         </input>
+      </then>
+      <else><echo msg="Using properties file value for wordpress.config_is_multisite" /></else>
+    </if>
+
+    <if>
+      <not><isset property="wordpress.subversion_action" /></not>
+      <then>
+        <input propertyName="wordpress.subversion_action" defaultValue="export" validArgs="export,checkout">
+          Enter checkout or export depending on how you would like to install WordPress from Subversion:
+         </input>
+      </then>
+      <else><echo msg="Using properties file value for wordpress.subversion_action" /></else>
+    </if>
+  </target>
+
+
+  <!-- Checkout the requested WordPress version from the repository -->
+  <target name="wordpress-retrieval" description="Retrieves WordPress from it's repository">
+    <if>
+      <equals arg1="${wordpress.install_version}" arg2="trunk" />
+      <then>
+        <property name="wordpress.repository_url" value="${wordpress.subversion_url}/trunk" />
+      </then>
+      <else>
+        <property name="wordpress.repository_url" value="${wordpress.subversion_url}/tags/${wordpress.install_version}" />
+      </else>
+    </if>
+
+    <if>
+      <equals arg1="${wordpress.subversion_action}" arg2="export" />
+      <then>
+        <echo message="Preparing to svn export: ${wordpress.repository_url}" />
+        <svnexport
+          svnpath="${wordpress.subversion_executable_path}" force="true" nocache="true" repositoryurl="${wordpress.repository_url}" todir="${wordpress.install_path}" />
+      </then>
+      <elseif>
+        <equals arg1="${wordpress.subversion_action}" arg2="checkout" />
+        <then>
+          <echo message="Preparing to svn checkout: ${wordpress.repository_url}" />
+          <svncheckout svnpath="${wordpress.subversion_executable_path}" force="true" nocache="true" repositoryurl="${wordpress.repository_url}" todir="${wordpress.install_path}" />
+        </then>
+      </elseif>
+    </if>
+  </target>
+
+
+  <!-- Setup the wp-config file -->
+  <!-- thanks to http://stackoverflow.com/questions/974963/phing-and-wordpress-configuration -->
+  <target name="wordpress-setup-wp-config-file" description="Copies the wp-config-sample.php to wp-config.php and sets up the parameters">
+    <if>
+      <equals arg1="${wordpress.config_debug}" arg2="yes" />
+      <then>
+        <property name="wordpress.config_debug" value="true" />
+      </then>
+      <else>
+        <property name="wordpress.config_debug" value="false" />
+      </else>
+    </if>
+
+    <randomstring propertyName="wordpress.config_auth_key" ascii_start="33" ascii_stop="100" length="100" exclude="34,39,94,96" />
+    <randomstring propertyName="wordpress.config_secure_auth_key" ascii_start="33" ascii_stop="126" length="100" exclude="34,39,94,96" />
+    <randomstring propertyName="wordpress.config_logged_in_key" ascii_start="33" ascii_stop="126" length="100" exclude="34,39,94,96" />
+    <randomstring propertyName="wordpress.config_nonce_key" ascii_start="33" ascii_stop="126" length="100" exclude="34,39,94,96" />
+    <randomstring propertyName="wordpress.config_auth_salt" ascii_start="33" ascii_stop="126" length="100" exclude="34,39,94,96" />
+    <randomstring propertyName="wordpress.config_secure_auth_salt" ascii_start="33" ascii_stop="126" length="100" exclude="34,39,94,96" />
+    <randomstring propertyName="wordpress.config_auth_key" ascii_start="33" ascii_stop="126" length="100" exclude="34,39,94,96" />
+    <randomstring propertyName="wordpress.config_logged_in_salt" ascii_start="33" ascii_stop="126" length="100" exclude="34,39,94,96" />
+    <randomstring propertyName="wordpress.config_nonce_salt" ascii_start="33" ascii_stop="126" length="100" exclude="34,39,94,96" />
+
+
+
+    <copy file="${wordpress.install_path}/wp-config-sample.php" tofile="${wordpress.install_path}/wp-config.php">
+      <filterchain>
+        <replaceregexp>
+          <regexp pattern="(define\('DB_NAME', ')\w+('\);)" replace="\1${wordpress.database_name}\2"/>
+          <regexp pattern="(define\('DB_USER', ')\w+('\);)" replace="\1${wordpress.database_user}\2"/>
+          <regexp pattern="(define\('DB_PASSWORD', ')\w+('\);)" replace="\1${wordpress.database_password}\2"/>
+          <regexp pattern="(define\('DB_HOST', ')\w+('\);)" replace="\1${wordpress.database_host}\2"/>
+          <regexp pattern="(define\('WPLANG', ')\w+('\);)" replace="\1${wordpress.config_language}\2"/>
+          <regexp pattern="(define\('WP_DEBUG',')\w+('\);)" replace="\1${wordpress.config_debug}\2"/>
+
+          <regexp pattern="(define\('AUTH_KEY',)\s*'put your unique phrase here'(\);)" replace="\1'${wordpress.config_auth_key}'\2"/>
+          <regexp pattern="(define\('SECURE_AUTH_KEY',)\s*'put your unique phrase here'(\);)" replace="\1'${wordpress.config_secure_auth_key}'\2"/>
+          <regexp pattern="(define\('LOGGED_IN_KEY',)\s*'put your unique phrase here'(\);)" replace="\1'${wordpress.config_logged_in_key}'\2"/>
+          <regexp pattern="(define\('NONCE_KEY',)\s*'put your unique phrase here'(\);)" replace="\1'${wordpress.config_nonce_key}'\2"/>
+          <regexp pattern="(define\('AUTH_SALT',)\s*'put your unique phrase here'(\);)" replace="\1'${wordpress.config_auth_salt}'\2"/>
+          <regexp pattern="(define\('SECURE_AUTH_SALT',)\s*'put your unique phrase here'(\);)" replace="\1'${wordpress.config_secure_auth_salt}'\2"/>
+          <regexp pattern="(define\('LOGGED_IN_SALT',)\s*'put your unique phrase here'(\);)" replace="\1'${wordpress.config_logged_in_salt}'\2"/>
+          <regexp pattern="(define\('NONCE_SALT',)\s*'put your unique phrase here'(\);)" replace="\1'${wordpress.config_nonce_salt}'\2"/>
+
+          <!-- set the Multisite variable -->
+          <regexp pattern="(\$table_prefix  = 'wp_';)" replace="\1 define('WP_ALLOW_MULTISITE', true);"/>
+
+
+        </replaceregexp>
+      </filterchain>
+    </copy>
+  </target>
+
+  <target name="wordpress-finish-install" description="Use cURL to fill in the WordPress install.php form.">
+    <echo file="${wordpress.tmp_path}/finish-install.php" append="false"><![CDATA[
+
+<?php
+// The url to post the POST values to
+$url = '${wordpress.site_url}/wp-admin/install.php?step=2';
+
+// These are the form fields used in the WordPress wp-admin/install.php form
+$fields = array(
+  'weblog_title'    => urlencode('${wordpress.site_title}'),
+  'user_name'       => urlencode('${wordpress.admin_user}'),
+  'admin_password'  => urlencode('${wordpress.admin_password}'),
+  'admin_password2' => urlencode('${wordpress.admin_password}'),
+  'admin_email'     => urlencode('${wordpress.admin_email}'),
+  'blog_public'     => urlencode('${wordpress.is_public}'),
+  'Submit'          => urlencode('Install WordPress'),
+);
+
+// URLify the data for the POST
+$fields_string = '';
+foreach($fields as $key => $value) {
+  $fields_string .= $key.'='.$value.'&';
+}
+rtrim( $fields_string, '&' );
+
+// Open connection
+$ch = curl_init();
+
+// Set the url, number of POST variables, POST data
+curl_setopt($ch, CURLOPT_URL,$url);
+curl_setopt($ch, CURLOPT_POST, count($fields));
+curl_setopt($ch, CURLOPT_POSTFIELDS, $fields_string);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+
+// Execute curl
+$result = curl_exec($ch);
+
+// Close connection
+curl_close($ch);
+
+// If the install was successful WordPress returns a page with the sentence:
+// 'WordPress has been installed' This script uses this as a check. If it finds
+// this string WordPress has been installed correctly thus return exitcode zero,
+// if WordPress is already installed return exitcode 2, otherwise return exitcode 3
+//
+// The check is case-insensitive
+if ( stristr($result, 'WordPress has been installed') ) {
+  return 0;
+} elseif ( stristr( $result, 'Already Installed') ) {
+  return 2;
+} else {
+  return 3;
+}
+?>
+      ]]>
+    </echo>
+    <exec command="php -f ${wordpress.tmp_path}/finish-install.php" checkreturn="true" />
+  </target>
+
+     <!-- Remove the wp-content directory before doing anything -->
+  <target name="wordpress-remove-wp-content" description="Will remove the wp-content directory so a clean build can be built">
+    <delete dir="${wordpress.install_path}/wp-content" includeemptydirs="true" verbose="true" failonerror="true" />
+  </target>
+
+
+  <!-- Remove the complete WordPress install including our own data in wp-content in the current directory -->
+  <target name="wordpress-remove-files" depends="wordpress-remove-wp-content" description="Remove the default WordPress core directories and files">
+    <delete>
+      <fileset dir="${wordpress.install_path}">
+        <include name="*.php" />
+        <include name="license.txt" />
+        <include name="readme.html" />
+      </fileset>
+    </delete>
+    <delete dir="${wordpress.install_path}/wp-admin" includeemptydirs="true" verbose="true" failonerror="true" />
+    <delete dir="${wordpress.install_path}/wp-includes" includeemptydirs="true" verbose="true" failonerror="true" />
+  </target>
+
+</project>
