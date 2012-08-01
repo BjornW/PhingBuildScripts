@@ -4,7 +4,7 @@
   <taskdef name="randomstring" classname="RandomStringTask" />
 
     <target name="test.randomstring">
-      <randomstring length="2" propertyName="test.rndstr" ascii_start="48" ascii_stop="57" exclude="33" />
+      <randomstring length="100" propertyName="test.rndstr" ascii_start="33" ascii_stop="100" exclude="34, 39, 96" />
       <echo message="The Random String: ${test.rndstr}" />
     </target>
 </project>

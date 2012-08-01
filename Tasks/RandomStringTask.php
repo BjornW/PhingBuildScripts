@@ -67,7 +67,7 @@ class RandomStringTask extends Task {
    * Exclude these comma seperated ascii numbers by default
    * by default exclude: double quote, single quote and apastroph
    */
-  private $exclude = '34, 39, 96';
+  private $exclude = "34, 39, 96";
 
 
   /**
@@ -99,7 +99,7 @@ class RandomStringTask extends Task {
    */
   public function setExclude($exclude) 
   {
-    $this->exclude = (int) $exclude; 
+    $this->exclude = $exclude; 
   }
 
   /**
@@ -179,13 +179,12 @@ class RandomStringTask extends Task {
   private function randomString() 
   {
     $str = '';
-    $excluded = $this->getExcludedAsciiNumbers();
     
     for( $i = 0; $i < $this->length; $i++) {
       $ascii_nr = $this->randomNumber(); 
       $str .= chr( $ascii_nr );
     }
-    return $str;
+    return (string) $str;
   }
 
   
@@ -197,15 +196,17 @@ class RandomStringTask extends Task {
    * @access private
    * @return int random number from selected range
    */ 
-  function randomNumber() 
+  function randomNumber( $ascii_nr = null ) 
   {
     $excluded = $this->getExcludedAsciiNumbers();
-    $ascii_nr = mt_rand( $this->ascii_start, $this->ascii_stop );
-    if( in_array($ascii_nr, $excluded) ) {
-      $this->randomNumber(); 
-    } else {
+    
+    if( ( ! is_null($ascii_nr) ) &&  ( ! in_array($ascii_nr, $excluded) ) ) {
       return $ascii_nr;
-    }
+    }   
+    
+    $ascii_nr = mt_rand( $this->ascii_start, $this->ascii_stop );
+    return $this->randomNumber( $ascii_nr ); 
+    
   }
 }
 ?>
