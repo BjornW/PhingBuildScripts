@@ -158,10 +158,10 @@
     <if>
       <equals arg1="${wordpress.config_debug}" arg2="yes" />
       <then>
-        <property name="wordpress.config_debug" value="true" />
+          <property override="true" name="wordpress.config_debug" value="(bool)true" />
       </then>
       <else>
-        <property name="wordpress.config_debug" value="false" />
+        <property override="true" name="wordpress.config_debug" value="(bool)false" />
       </else>
     </if>
 
@@ -175,7 +175,7 @@
     <randomstring propertyName="wordpress.config_logged_in_salt" ascii_start="33" ascii_stop="126" length="100" exclude="34,39,94,96" />
     <randomstring propertyName="wordpress.config_nonce_salt" ascii_start="33" ascii_stop="126" length="100" exclude="34,39,94,96" />
 
-
+    <echo msg="wpdebug: ${wordpress.config_debug}" />
 
     <copy file="${wordpress.install_path}/wp-config-sample.php" tofile="${wordpress.install_path}/wp-config.php">
       <filterchain>
@@ -185,7 +185,7 @@
           <regexp pattern="(define\('DB_PASSWORD', ')\w+('\);)" replace="\1${wordpress.database_password}\2"/>
           <regexp pattern="(define\('DB_HOST', ')\w+('\);)" replace="\1${wordpress.database_host}\2"/>
           <regexp pattern="(define\('WPLANG', ')\w+('\);)" replace="\1${wordpress.config_language}\2"/>
-          <regexp pattern="(define\('WP_DEBUG',')\w+('\);)" replace="\1${wordpress.config_debug}\2"/>
+          <regexp pattern="(define\('WP_DEBUG', )\w+(\);)" replace="\1${wordpress.config_debug}\2"/>
 
           <regexp pattern="(define\('AUTH_KEY',)\s*'put your unique phrase here'(\);)" replace="\1'${wordpress.config_auth_key}'\2"/>
           <regexp pattern="(define\('SECURE_AUTH_KEY',)\s*'put your unique phrase here'(\);)" replace="\1'${wordpress.config_secure_auth_key}'\2"/>
